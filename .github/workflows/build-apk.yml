@@ -1,0 +1,48 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Unzip project
+        run: |
+          ZIP=$(ls -t *.zip | head -n1)
+          echo "Using $ZIP"
+          mkdir -p app
+          unzip -q -o "$ZIP" -d app
+          ROOT=$(dirname "$(find app -name pubspec.yaml -not -path '*/.*' | head -n1)")
+          echo "ROOT=$ROOT" >> "$GITHUB_ENV"
+
+      - name: Prepare Android
+        working-directory: ${{ env.ROOT }}
+        run: |
+          rm -rf android
+          flutter create --platforms=android --org iq.bas.bus --project-name bas_bus "$RUNNER_TEMP/scaffold"
+          cp -r "$RUNNER_TEMP/scaffold/android" ./android
+          bash tool/android_setup.sh
+          flutter pub get
+
+      - name: Build
+        working-directory: ${{ env.ROOT }}
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bas-bus-apk
+          path: ${{ env.ROOT }}/build/app/outputs/flutter-apk/app-release.apk
