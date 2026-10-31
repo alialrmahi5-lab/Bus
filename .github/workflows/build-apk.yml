@@ -22,7 +22,7 @@ jobs:
 
       - name: Unzip project
         run: |
-          ZIP=$(ls -t *.zip | head -n1)
+          ZIP=$(ls *.zip | sort | tail -n1)
           echo "Using $ZIP"
           mkdir -p app
           unzip -q -o "$ZIP" -d app
@@ -40,9 +40,12 @@ jobs:
 
       - name: Build
         working-directory: ${{ env.ROOT }}
-        run: flutter build apk --release
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: flutter build apk --release --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bas-bus-apk
+          name: bus-iq-apk
           path: ${{ env.ROOT }}/build/app/outputs/flutter-apk/app-release.apk
